@@ -1,0 +1,9 @@
+node_modules/
+dist/
+target/
+backend/venv/
+backend/.env
+*.pyc
+__pycache__/
+.DS_Store
+src-tauri/binaries/vibetaff-backend-*
