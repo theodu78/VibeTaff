@@ -2,3 +2,17 @@ fastapi
 uvicorn[standard]
 openai
 python-dotenv
+pymupdf4llm
+pandas
+openpyxl
+beautifulsoup4
+lxml
+sentence-transformers
+lancedb
+pyarrow
+python-multipart
+tavily-python
+RestrictedPython
+fpdf2
+mcp
+anthropic

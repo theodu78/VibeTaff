@@ -137,3 +137,24 @@ L'Agent est confiné pour protéger le PC de l'utilisateur.
     Exécution Agentique : L'Agent interroge la mémoire, scappe le web, écrit un script Python à la volée pour nettoyer l'export Excel (BYOD), génère un Data Grid dans le chat, et affiche un brouillon d'e-mail.
 
     Validation : Le consultant valide le tableau, le copie en CSV, et clique sur [Envoyer] pour le mail. S'il ferme l'app, l'historique complet est sauvegardé dans SQLite.
+
+8. Extensibilité V2 — Compatibilité MCP & Écosystème Communautaire
+
+    VibeTaff V1 se concentre sur le coeur métier (ingestion documentaire, RAG, outils fichiers, chat agentique). Tout est maison pour garder le contrôle.
+
+    VibeTaff V2 s'ouvre à l'écosystème via le Model Context Protocol (MCP) — le standard universel utilisé par OpenClaw, Claude Desktop, Cursor, et l'industrie IA. Un SDK Python officiel existe (modelcontextprotocol/python-sdk, v1.26+).
+
+    Principe : Le backend FastAPI intègre un client MCP. L'utilisateur peut brancher n'importe quel "MCP server" communautaire comme outil supplémentaire pour l'agent, sans écrire de code.
+
+    Intégrations prioritaires V2 (issues de l'écosystème OpenClaw/ClawHub — 5 700+ skills) :
+    - Gmail / Outlook → Envoi direct d'emails (remplace le mailto: de V1)
+    - Google Calendar → Consultation et création d'événements
+    - Notion → Lecture/écriture de bases de données et pages
+    - Google Drive / OneDrive → Accès aux fichiers cloud
+    - Slack / Teams → Lecture de messages, notifications
+
+    Autres évolutions V2 :
+    - Windows / Linux (packaging multi-plateforme)
+    - Multi-LLM (Claude, GPT, modèles locaux via Ollama)
+    - OCR pour documents scannés
+    - Marketplace interne de MCP servers pré-configurés

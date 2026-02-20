@@ -356,3 +356,42 @@ ANNEXE — Stack Technique Complète (Récapitulatif)
     Recherche Web          Tavily API                  Recherche optimisée IA
     Sandbox Code           Pyodide / wasmtime-py       Exécution Python en bac à sable WASM
     Sécurité               Workspace Jail + HITL       Confinement + validation humaine
+
+────────────────────────────────────────────────────────────────
+
+ANNEXE — Feuille de Route V2 (Post-MVP)
+
+Objectif : Après le MVP V1 (Phases 0-9), VibeTaff s'ouvre à l'écosystème communautaire
+et ajoute les fonctionnalités repoussées volontairement.
+
+V2.1 — Client MCP (Model Context Protocol)
+    - Intégrer le SDK Python MCP (modelcontextprotocol/python-sdk, v1.26+)
+    - Le backend FastAPI devient un "MCP Host" : il peut se connecter à des MCP servers externes
+    - Interface de configuration dans les Paramètres : l'utilisateur ajoute un MCP server (local ou distant)
+    - Les outils exposés par le MCP server apparaissent automatiquement dans la liste d'outils de l'agent
+    - Priorité : Gmail, Google Calendar, Notion, Slack (skills les plus populaires de ClawHub)
+
+V2.2 — Email Natif (OAuth)
+    - Remplacer le mailto: V1 par une intégration OAuth Gmail / Outlook
+    - L'agent peut envoyer des emails directement (avec Human-in-the-Loop pour approbation)
+    - Lecture de boîte de réception pour contexte (via MCP server Gmail ou intégration native)
+
+V2.3 — Multi-plateforme
+    - Packaging Windows (.msi) et Linux (.AppImage/.deb)
+    - Adapter les chemins, permissions, et le lancement du sidecar pour chaque OS
+    - CI/CD pour builds automatisés multi-plateforme
+
+V2.4 — Multi-LLM
+    - Support de plusieurs providers : Claude (Anthropic), GPT (OpenAI), modèles locaux (Ollama)
+    - Sélecteur de modèle dans les Paramètres
+    - Gestion unifiée des formats de tool calling (chaque provider a ses variantes)
+
+V2.5 — OCR & Documents Scannés
+    - Intégrer un moteur OCR (Tesseract ou équivalent) dans le pipeline d'ingestion
+    - Détecter automatiquement les PDF "images" (pas de texte extractible) et les passer en OCR
+    - Ajouter les résultats OCR au même pipeline chunking → embedding → LanceDB
+
+V2.6 — Marketplace MCP
+    - Interface graphique de découverte de MCP servers pré-configurés
+    - Installation en un clic depuis un catalogue curé
+    - Inspiration : ClawHub (5 700+ skills), mais adapté au desktop

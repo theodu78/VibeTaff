@@ -1,10 +1,15 @@
+use tauri::Manager;
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
+use std::sync::Mutex;
+
+struct SidecarState(Mutex<Option<tauri_plugin_shell::process::CommandChild>>);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -14,8 +19,6 @@ pub fn run() {
                 )?;
             }
 
-            // In production, launch the sidecar binary.
-            // In dev, the Python backend is started manually.
             if !cfg!(debug_assertions) {
                 let sidecar_command = app
                     .handle()
@@ -23,9 +26,12 @@ pub fn run() {
                     .sidecar("vibetaff-backend")
                     .expect("failed to create sidecar command");
 
-                let (mut rx, _child) = sidecar_command
+                let (mut rx, child) = sidecar_command
                     .spawn()
                     .expect("Failed to spawn backend sidecar");
+
+                let state = app.state::<SidecarState>();
+                *state.0.lock().unwrap() = Some(child);
 
                 tauri::async_runtime::spawn(async move {
                     while let Some(event) = rx.recv().await {
@@ -38,6 +44,12 @@ pub fn run() {
                                 let s = String::from_utf8_lossy(&line);
                                 log::warn!("[backend] {}", s);
                             }
+                            CommandEvent::Terminated(payload) => {
+                                log::warn!(
+                                    "[backend] Process terminated with code: {:?}",
+                                    payload.code
+                                );
+                            }
                             _ => {}
                         }
                     }
@@ -45,6 +57,11 @@ pub fn run() {
             }
 
             Ok(())
+        })
+        .on_window_event(|_window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                log::info!("Window destroyed, sidecar will be cleaned up by OS");
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

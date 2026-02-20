@@ -88,3 +88,22 @@ Décisions prises lors de la phase de conception, avec justification :
 
     Plateforme V1 : macOS uniquement.
     Simplifie le développement et le testing. Windows/Linux envisagés en V2.
+
+    Compatibilité MCP (Model Context Protocol) prévue en V2.
+    Le protocole MCP est le standard universel utilisé par OpenClaw (200k+ étoiles GitHub), Claude Desktop, Cursor, et l'écosystème IA. Un SDK Python officiel existe (v1.26, modelcontextprotocol/python-sdk). En V2, VibeTaff intègrera un client MCP dans le backend FastAPI, permettant aux utilisateurs de brancher n'importe quel MCP server communautaire (Gmail, Google Calendar, Notion, Slack, GitHub, etc.) comme outil supplémentaire pour l'agent. Cela ouvre l'accès aux 5 700+ skills de ClawHub et à tout l'écosystème MCP sans réécrire de code.
+    Stratégie : V1 = coeur propriétaire (ingestion documents, RAG, outils fichiers). V2 = extensibilité via MCP (profiter de la communauté pour tout le reste).
+
+7. Vision V2 — Ce qu'on prend de l'écosystème OpenClaw
+
+    Skills communautaires prioritaires pour V2 (via MCP) :
+    - Gmail / Outlook : Lecture de boîte de réception, envoi direct (remplace le mailto: de V1)
+    - Google Calendar : Consultation d'agenda, création d'événements
+    - Notion : Lecture/écriture de bases de données et pages
+    - Google Drive / OneDrive : Accès aux fichiers cloud
+    - Slack / Teams : Lecture de messages, envoi de notifications
+
+    Autres fonctionnalités V2 :
+    - Windows / Linux (packaging multi-plateforme)
+    - OAuth Gmail/Outlook natif (envoi direct d'emails sans mailto:)
+    - OCR pour documents scannés (PDF images)
+    - Support multi-LLM (Claude, GPT, modèles locaux via Ollama)

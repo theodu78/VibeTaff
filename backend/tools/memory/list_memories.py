@@ -1,0 +1,25 @@
+from pathlib import Path
+from tools._base import tool
+
+
+@tool(
+    name="list_memories",
+    description="Liste toutes les mémoires enregistrées pour ce projet (préférences utilisateur, infos mémorisées). Utilise cet outil pour vérifier ce qui est déjà mémorisé avant d'ajouter un doublon.",
+    category="memory",
+    parameters={
+        "type": "object",
+        "properties": {},
+    },
+)
+def list_memories(args: dict, project_id: str, project_dir: Path) -> str:
+    from database import get_all_memories
+
+    memories = get_all_memories(project_id)
+    if not memories:
+        return "Aucune mémoire enregistrée pour ce projet."
+
+    parts = []
+    for m in memories:
+        date = m.get("created_at", "")[:10]
+        parts.append(f"- {m['key']} : {m['value']} (enregistré le {date})")
+    return f"{len(memories)} mémoire(s) enregistrée(s) :\n" + "\n".join(parts)
