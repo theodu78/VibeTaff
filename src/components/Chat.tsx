@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import ToolCall from "./ToolCall";
 
 interface ChatProps {
   backendUrl: string;
@@ -69,6 +70,22 @@ export default function Chat({ backendUrl }: ChatProps) {
                           {part.text}
                         </div>
                       );
+                    case "dynamic-tool":
+                      return (
+                        <ToolCall
+                          key={`${message.id}-${i}`}
+                          toolName={part.toolName}
+                          state={part.state}
+                          input={
+                            "input" in part
+                              ? (part.input as Record<string, unknown>)
+                              : undefined
+                          }
+                          output={
+                            "output" in part ? part.output : undefined
+                          }
+                        />
+                      );
                     default:
                       return null;
                   }
@@ -77,17 +94,19 @@ export default function Chat({ backendUrl }: ChatProps) {
             </div>
           ))}
 
-          {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-            <div className="flex justify-start">
-              <div className="bg-zinc-800 rounded-2xl px-4 py-3">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                  <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                  <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" />
+          {isStreaming &&
+            (messages.length === 0 ||
+              messages[messages.length - 1]?.role !== "assistant") && (
+              <div className="flex justify-start">
+                <div className="bg-zinc-800 rounded-2xl px-4 py-3">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                    <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {error && (
             <div className="flex justify-center">

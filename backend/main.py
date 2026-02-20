@@ -9,7 +9,20 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from openai import AsyncOpenAI
 
+from tools import TOOL_DEFINITIONS, execute_tool
+
 load_dotenv()
+
+MAX_AGENT_STEPS = 5
+SYSTEM_PROMPT = """Tu es Vibetaff, un assistant IA spécialisé dans l'analyse de documents professionnels (contrats, bilans financiers, factures, e-mails).
+
+Tu as accès à des outils pour manipuler les fichiers du projet de l'utilisateur. Utilise-les quand c'est pertinent.
+
+Règles :
+- Réponds toujours en français.
+- Sois concis et structuré.
+- Quand tu utilises un outil, explique brièvement pourquoi.
+- Si un outil renvoie une erreur, lis le message d'erreur et corrige ton appel (ne réessaie pas la même chose)."""
 
 app = FastAPI(title="Vibetaff Backend")
 
@@ -38,7 +51,7 @@ def sse_event(data: dict | str) -> str:
 
 def ui_messages_to_openai(messages: list[dict]) -> list[dict]:
     """Convert Vercel AI SDK UIMessage format to OpenAI message format."""
-    result = []
+    result = [{"role": "system", "content": SYSTEM_PROMPT}]
     for msg in messages:
         role = msg.get("role", "user")
         parts = msg.get("parts", [])
@@ -54,10 +67,7 @@ def ui_messages_to_openai(messages: list[dict]) -> list[dict]:
 @app.get("/api/health")
 async def health():
     api_key = os.getenv("DEEPSEEK_API_KEY")
-    return {
-        "status": "ok",
-        "deepseek_configured": bool(api_key),
-    }
+    return {"status": "ok", "deepseek_configured": bool(api_key)}
 
 
 @app.post("/api/chat")
@@ -66,7 +76,7 @@ async def chat(request: Request):
     messages = body.get("messages", [])
     openai_messages = ui_messages_to_openai(messages)
 
-    if not openai_messages:
+    if len(openai_messages) <= 1:
         return StreamingResponse(
             iter([sse_event({"type": "error", "errorText": "No messages provided"})]),
             media_type="text/event-stream",
@@ -76,31 +86,162 @@ async def chat(request: Request):
 
     async def generate():
         message_id = f"msg_{uuid.uuid4().hex[:40]}"
-        text_id = f"txt_{uuid.uuid4().hex[:40]}"
-
         yield sse_event({"type": "start", "messageId": message_id})
-        yield sse_event({"type": "start-step"})
-        yield sse_event({"type": "text-start", "id": text_id})
 
-        try:
-            response = await client.chat.completions.create(
-                model="deepseek-chat",
-                messages=openai_messages,
-                stream=True,
-            )
+        nonlocal openai_messages
+        steps = 0
+
+        while steps < MAX_AGENT_STEPS:
+            steps += 1
+            yield sse_event({"type": "start-step"})
+
+            try:
+                response = await client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=openai_messages,
+                    tools=TOOL_DEFINITIONS,
+                    stream=True,
+                )
+            except Exception as e:
+                yield sse_event({"type": "error", "errorText": str(e)})
+                break
+
+            text_content = ""
+            tool_calls_accum: dict[int, dict] = {}
+            finish_reason = None
 
             async for chunk in response:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    delta = chunk.choices[0].delta.content
+                choice = chunk.choices[0] if chunk.choices else None
+                if not choice:
+                    continue
+
+                if choice.finish_reason:
+                    finish_reason = choice.finish_reason
+
+                delta = choice.delta
+
+                # Stream text content
+                if delta.content:
+                    if not text_content:
+                        text_id = f"txt_{uuid.uuid4().hex[:40]}"
+                        yield sse_event({"type": "text-start", "id": text_id})
+                    text_content += delta.content
                     yield sse_event(
-                        {"type": "text-delta", "id": text_id, "delta": delta}
+                        {"type": "text-delta", "id": text_id, "delta": delta.content}
                     )
 
-        except Exception as e:
-            yield sse_event({"type": "error", "errorText": str(e)})
+                # Accumulate tool calls
+                if delta.tool_calls:
+                    for tc in delta.tool_calls:
+                        idx = tc.index
+                        if idx not in tool_calls_accum:
+                            tool_calls_accum[idx] = {
+                                "id": "",
+                                "name": "",
+                                "arguments": "",
+                            }
+                        if tc.id:
+                            tool_calls_accum[idx]["id"] = tc.id
+                        if tc.function and tc.function.name:
+                            tool_calls_accum[idx]["name"] = tc.function.name
+                        if tc.function and tc.function.arguments:
+                            tool_calls_accum[idx]["arguments"] += (
+                                tc.function.arguments
+                            )
 
-        yield sse_event({"type": "text-end", "id": text_id})
-        yield sse_event({"type": "finish-step"})
+            # Close text block if we streamed any text
+            if text_content:
+                yield sse_event({"type": "text-end", "id": text_id})
+
+            # If we got tool calls, execute them and loop
+            if finish_reason == "tool_calls" and tool_calls_accum:
+                assistant_msg = {"role": "assistant", "content": None, "tool_calls": []}
+
+                for idx in sorted(tool_calls_accum.keys()):
+                    tc = tool_calls_accum[idx]
+                    assistant_msg["tool_calls"].append(
+                        {
+                            "id": tc["id"],
+                            "type": "function",
+                            "function": {
+                                "name": tc["name"],
+                                "arguments": tc["arguments"],
+                            },
+                        }
+                    )
+
+                openai_messages.append(assistant_msg)
+
+                for idx in sorted(tool_calls_accum.keys()):
+                    tc = tool_calls_accum[idx]
+                    tool_call_id = tc["id"]
+                    tool_name = tc["name"]
+
+                    try:
+                        args = json.loads(tc["arguments"])
+                    except json.JSONDecodeError:
+                        args = {}
+
+                    # SSE: tool input available
+                    yield sse_event(
+                        {
+                            "type": "tool-input-start",
+                            "toolCallId": tool_call_id,
+                            "toolName": tool_name,
+                        }
+                    )
+                    yield sse_event(
+                        {
+                            "type": "tool-input-available",
+                            "toolCallId": tool_call_id,
+                            "toolName": tool_name,
+                            "input": args,
+                        }
+                    )
+
+                    # Execute the tool
+                    result = execute_tool(tool_name, args)
+
+                    # SSE: tool output
+                    yield sse_event(
+                        {
+                            "type": "tool-output-available",
+                            "toolCallId": tool_call_id,
+                            "output": result,
+                        }
+                    )
+
+                    openai_messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call_id,
+                            "content": result,
+                        }
+                    )
+
+                yield sse_event({"type": "finish-step"})
+                # Loop back to call DeepSeek with tool results
+                continue
+
+            # No tool calls — we're done
+            yield sse_event({"type": "finish-step"})
+            break
+
+        # Circuit breaker message
+        if steps >= MAX_AGENT_STEPS:
+            breaker_id = f"txt_{uuid.uuid4().hex[:40]}"
+            yield sse_event({"type": "start-step"})
+            yield sse_event({"type": "text-start", "id": breaker_id})
+            yield sse_event(
+                {
+                    "type": "text-delta",
+                    "id": breaker_id,
+                    "delta": "\n\n⚠️ J'ai atteint la limite d'actions par message. Reformule ta demande si besoin.",
+                }
+            )
+            yield sse_event({"type": "text-end", "id": breaker_id})
+            yield sse_event({"type": "finish-step"})
+
         yield sse_event({"type": "finish"})
         yield sse_event("[DONE]")
 
