@@ -1,6 +1,10 @@
 import json
+import logging
 from pathlib import Path
 from tools._base import tool, resolve_safe_path
+from tools.files.write_note import _auto_index
+
+logger = logging.getLogger(__name__)
 
 
 @tool(
@@ -42,5 +46,6 @@ def write_json_table(args: dict, project_id: str, project_dir: Path) -> str:
     target.write_text(
         json.dumps(json_data, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    _auto_index(target, project_id)
     row_count = len(json_data) if isinstance(json_data, list) else 0
-    return f"Le tableau '{file_name}' a été créé avec succès ({row_count} lignes)."
+    return f"Le tableau '{file_name}' a été créé et indexé ({row_count} lignes)."

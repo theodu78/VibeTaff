@@ -75,16 +75,10 @@ def manage_todo(args: dict, project_id: str, project_dir: Path) -> str:
 
     if action == "list":
         if not todos:
-            return "Aucune tâche dans la liste. Utilisez l'action 'add' pour en créer une."
-        lines = []
-        for t in todos:
-            status_icon = {"a_faire": "⬜", "en_cours": "🔄", "fait": "✅", "annule": "❌"}.get(t.get("statut", ""), "⬜")
-            prio = t.get("priorite", "normale")
-            prio_tag = {"haute": "🔴", "normale": "🟡", "basse": "🟢"}.get(prio, "")
-            deadline = t.get("deadline")
-            dl_str = f" — échéance : {deadline}" if deadline else ""
-            lines.append(f"{status_icon} #{t['id']} {prio_tag} {t['tache']}{dl_str} [{t.get('statut', 'a_faire')}]")
-        return f"**{len(todos)} tâche(s) :**\n" + "\n".join(lines)
+            return "Aucune tâche dans la liste."
+        done = sum(1 for t in todos if t.get("statut") in ("fait", "annule"))
+        pending = len(todos) - done
+        return f"[AFFICHAGE_VISUEL] {len(todos)} tâche(s) affichée(s) dans le bloc interactif ({done} terminée(s), {pending} en attente). Ne reproduis PAS la liste, l'utilisateur la voit déjà."
 
     if action == "add":
         tache = args.get("tache", "").strip()

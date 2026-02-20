@@ -12,9 +12,8 @@ function App() {
   const [deepseekConfigured, setDeepseekConfigured] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [ingestionToast, setIngestionToast] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [pendingFiles, setPendingFiles] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<{ name: string; status: "indexing" | "ready" | "error" }[]>([]);
 
   useEffect(() => {
     const checkBackend = async () => {
@@ -62,7 +61,8 @@ function App() {
   }, [startNewConversation]);
 
   const ingestFile = useCallback(async (file: File) => {
-    setIngestionToast(`Indexation de ${file.name}...`);
+    const entry = { name: file.name, status: "indexing" as const };
+    setPendingFiles(prev => [...prev, entry]);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -72,15 +72,19 @@ function App() {
       );
       const data = await res.json();
       if (data.status === "ok") {
-        setIngestionToast(`${file.name} indexé (${data.chunks_stored} chunks)`);
-        setPendingFiles(prev => [...prev, file.name]);
+        setPendingFiles(prev =>
+          prev.map(f => f.name === file.name ? { ...f, status: "ready" as const } : f)
+        );
       } else {
-        setIngestionToast(`Erreur : ${data.message}`);
+        setPendingFiles(prev =>
+          prev.map(f => f.name === file.name ? { ...f, status: "error" as const } : f)
+        );
       }
     } catch {
-      setIngestionToast(`Erreur réseau pour ${file.name}`);
+      setPendingFiles(prev =>
+        prev.map(f => f.name === file.name ? { ...f, status: "error" as const } : f)
+      );
     }
-    setTimeout(() => setIngestionToast(null), 4000);
   }, []);
 
   const handleDrop = useCallback(
@@ -172,7 +176,8 @@ function App() {
           conversationId={conversationId}
           projectId={PROJECT_ID}
           onIngestFile={ingestFile}
-          pendingFiles={pendingFiles}
+          pendingFiles={pendingFiles.map(f => f.name)}
+          pendingFileStatuses={pendingFiles}
           onClearPendingFiles={() => setPendingFiles([])}
         />
       )}
@@ -187,11 +192,6 @@ function App() {
         </div>
       )}
 
-      {ingestionToast && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-300 shadow-lg">
-          {ingestionToast}
-        </div>
-      )}
     </div>
   );
 }

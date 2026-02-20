@@ -8,6 +8,13 @@ import ThinkingBlock from "./ThinkingBlock";
 import FileViewer from "./FileViewer";
 import TodoBlock from "./TodoBlock";
 import TodoViewer from "./TodoViewer";
+import ContactBlock from "./ContactBlock";
+import ContactViewer from "./ContactViewer";
+
+interface PendingFileStatus {
+  name: string;
+  status: "indexing" | "ready" | "error";
+}
 
 interface ChatProps {
   backendUrl: string;
@@ -15,6 +22,7 @@ interface ChatProps {
   projectId: string;
   onIngestFile?: (file: File) => void;
   pendingFiles?: string[];
+  pendingFileStatuses?: PendingFileStatus[];
   onClearPendingFiles?: () => void;
 }
 
@@ -24,12 +32,14 @@ export default function Chat({
   projectId,
   onIngestFile,
   pendingFiles = [],
+  pendingFileStatuses = [],
   onClearPendingFiles,
 }: ChatProps) {
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewerPath, setViewerPath] = useState<string | null>(null);
   const [todoViewerOpen, setTodoViewerOpen] = useState(false);
+  const [contactViewerOpen, setContactViewerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -87,11 +97,28 @@ export default function Chat({
     [onIngestFile]
   );
 
-  const getMessageText = (parts: (typeof messages)[number]["parts"]) =>
-    parts
+  const FILE_TAG_RE = /\[Fichier\(s\) joint\(s\)\s*:\s*([^\]]+)\]\s*/;
+
+  const parseUserMessage = (parts: (typeof messages)[number]["parts"]) => {
+    const raw = parts
       .filter((p): p is { type: "text"; text: string } => p.type === "text")
       .map((p) => p.text)
       .join("\n");
+
+    const match = raw.match(FILE_TAG_RE);
+    if (!match) return { text: raw, files: [] as string[] };
+
+    const filesStr = match[1];
+    const files = filesStr
+      .split(",")
+      .map((f) => f.trim().replace(/^"|"$/g, ""))
+      .filter(Boolean);
+    const text = raw.replace(FILE_TAG_RE, "").trim();
+    return { text, files };
+  };
+
+  const getMessageText = (parts: (typeof messages)[number]["parts"]) =>
+    parseUserMessage(parts).text;
 
   const lastUserIdx = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -127,6 +154,23 @@ export default function Chat({
             const isLastUser = msgIdx === lastUserIdx;
 
             if (isUser) {
+              const parsed = parseUserMessage(message.parts);
+              const fileBadges = parsed.files.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {parsed.files.map((f, fi) => (
+                    <span
+                      key={fi}
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-700/40 text-zinc-400 text-xs"
+                    >
+                      <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              );
+
               if (isLastUser) {
                 return (
                   <div
@@ -135,8 +179,9 @@ export default function Chat({
                   >
                     <div className="max-w-3xl mx-auto pt-3">
                       <div className="bg-zinc-800/60 border border-zinc-700/40 rounded-xl px-4 py-3">
+                        {fileBadges}
                         <p className="text-sm text-zinc-200 whitespace-pre-wrap">
-                          {getMessageText(message.parts)}
+                          {parsed.text}
                         </p>
                       </div>
                     </div>
@@ -147,8 +192,9 @@ export default function Chat({
               return (
                 <div key={message.id}>
                   <div className="bg-zinc-800/30 border border-zinc-700/20 rounded-xl px-4 py-3">
+                    {fileBadges}
                     <p className="text-sm text-zinc-400 whitespace-pre-wrap">
-                      {getMessageText(message.parts)}
+                      {parsed.text}
                     </p>
                   </div>
                 </div>
@@ -172,9 +218,25 @@ export default function Chat({
             const thinkingIsStreaming =
               isActivelyStreaming && !hasTextContent;
 
-            const nonReasoningParts = message.parts.filter(
-              (p) => p.type !== "reasoning"
-            );
+            const dedupedParts = (() => {
+              const parts = message.parts.filter(
+                (p) => p.type !== "reasoning"
+              );
+              const lastIdx: Record<string, number> = {};
+              parts.forEach((p, i) => {
+                const pt = p as Record<string, unknown>;
+                if (typeof pt.type === "string" && (pt.type === "data-todos" || pt.type === "data-contacts")) {
+                  lastIdx[pt.type as string] = i;
+                }
+              });
+              return parts.filter((p, i) => {
+                const pt = p as Record<string, unknown>;
+                if (typeof pt.type === "string" && (pt.type === "data-todos" || pt.type === "data-contacts")) {
+                  return i === lastIdx[pt.type as string];
+                }
+                return true;
+              });
+            })();
 
             return (
               <div key={message.id} className="group relative">
@@ -185,7 +247,7 @@ export default function Chat({
                   />
                 )}
 
-                {nonReasoningParts.map((part, i) => {
+                {dedupedParts.map((part, i) => {
                   switch (part.type) {
                     case "text":
                       return (
@@ -259,6 +321,30 @@ export default function Chat({
                             );
                           }
                         }
+                        if (p.type === "data-contacts") {
+                          const d = p.data as {
+                            projectId: string;
+                            contacts: {
+                              id: number;
+                              nom: string;
+                              telephone?: string;
+                              email?: string;
+                              adresse?: string;
+                              entreprise?: string;
+                              notes?: string;
+                              cree_le?: string;
+                            }[];
+                          };
+                          if (d.contacts && d.contacts.length > 0) {
+                            return (
+                              <ContactBlock
+                                key={`${message.id}-contacts-${i}`}
+                                contacts={d.contacts}
+                                onOpenViewer={() => setContactViewerOpen(true)}
+                              />
+                            );
+                          }
+                        }
                       }
                       return null;
                     }
@@ -316,17 +402,34 @@ export default function Chat({
       {/* ═══ FIXED BOTTOM: input bar ═══ */}
       <div className="shrink-0 border-t border-zinc-800/50 bg-zinc-950 px-4 py-3">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          {pendingFiles.length > 0 && (
+          {pendingFileStatuses.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2">
-              {pendingFiles.map((f, i) => (
+              {pendingFileStatuses.map((f, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs"
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors ${
+                    f.status === "indexing"
+                      ? "bg-zinc-800 border border-zinc-700/50 text-zinc-400"
+                      : f.status === "error"
+                      ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                      : "bg-zinc-800/50 border border-zinc-700/30 text-zinc-300"
+                  }`}
                 >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  {f}
+                  {f.status === "indexing" ? (
+                    <div className="w-3 h-3 border border-zinc-500 border-t-zinc-300 rounded-full animate-spin" />
+                  ) : f.status === "error" ? (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  )}
+                  {f.name}
+                  {f.status === "indexing" && (
+                    <span className="text-zinc-600 ml-0.5">indexation...</span>
+                  )}
                 </span>
               ))}
             </div>
@@ -413,6 +516,14 @@ export default function Chat({
           backendUrl={backendUrl}
           projectId={projectId}
           onClose={() => setTodoViewerOpen(false)}
+        />
+      )}
+
+      {contactViewerOpen && (
+        <ContactViewer
+          backendUrl={backendUrl}
+          projectId={projectId}
+          onClose={() => setContactViewerOpen(false)}
         />
       )}
     </div>

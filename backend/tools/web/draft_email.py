@@ -8,7 +8,7 @@ from tools._base import tool
     name="draft_email",
     description="Prépare un brouillon d'email. N'envoie rien : le brouillon est affiché dans le chat pour validation par l'utilisateur, qui pourra l'envoyer via son client mail.",
     category="web",
-    requires_approval=True,
+    requires_approval=False,
     parameters={
         "type": "object",
         "properties": {

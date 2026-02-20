@@ -50,6 +50,9 @@ def _format_size(size_bytes: int) -> str:
     return f"{size_bytes // (1024 * 1024)} Mo"
 
 
+HIDDEN_NAMES = {"_config", "_uploads", "MEMORY.md", "todos.json", "contacts.json", "__pycache__", "reunions"}
+
+
 def list_dir(directory: Path, max_depth: int = 3, _depth: int = 0) -> str:
     """List directory contents recursively as a tree."""
     try:
@@ -62,7 +65,7 @@ def list_dir(directory: Path, max_depth: int = 3, _depth: int = 0) -> str:
     indent = "  " * _depth
     lines = []
     for entry in entries:
-        if entry.name.startswith("."):
+        if entry.name.startswith(".") or (_depth == 0 and entry.name in HIDDEN_NAMES):
             continue
         if entry.is_dir():
             lines.append(f"{indent}📁 {entry.name}/")

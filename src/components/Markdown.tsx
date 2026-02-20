@@ -99,7 +99,7 @@ function InlineCode({ children, ...props }: Record<string, unknown>) {
     return (
       <button
         onClick={() => onFileOpen(text)}
-        className="bg-zinc-700/50 px-1.5 py-0.5 rounded text-[0.85em] text-emerald-300 hover:text-emerald-200 hover:bg-zinc-600/50 cursor-pointer transition-colors underline underline-offset-2 decoration-zinc-600"
+        className="bg-zinc-700/50 px-1.5 py-0.5 rounded text-[0.85em] text-zinc-200 hover:text-white hover:bg-zinc-600/50 cursor-pointer transition-colors underline underline-offset-2 decoration-zinc-600"
         title={`Ouvrir ${text}`}
         {...props}
       >
@@ -110,7 +110,7 @@ function InlineCode({ children, ...props }: Record<string, unknown>) {
 
   return (
     <code
-      className="bg-zinc-700/50 px-1.5 py-0.5 rounded text-[0.85em] text-emerald-300"
+      className="bg-zinc-700/50 px-1.5 py-0.5 rounded text-[0.85em] text-zinc-200"
       {...props}
     >
       {children}

@@ -96,7 +96,7 @@ export default function ToolCall({ toolName, state, input, output }: ToolCallPro
         <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800">
           <span>🔢</span>
           <span className="font-medium text-zinc-300">Calcul</span>
-          <span className="ml-auto text-emerald-400">terminé</span>
+          <span className="ml-auto text-zinc-500">terminé</span>
         </div>
         {code && (
           <div className="px-3 py-2 border-b border-zinc-800">
@@ -106,7 +106,7 @@ export default function ToolCall({ toolName, state, input, output }: ToolCallPro
           </div>
         )}
         <div className="px-3 py-2 bg-zinc-800/30">
-          <pre className="text-emerald-300 whitespace-pre-wrap break-all font-mono">
+          <pre className="text-zinc-300 whitespace-pre-wrap break-all font-mono">
             {typeof output === "string" ? output : JSON.stringify(output)}
           </pre>
         </div>
@@ -115,16 +115,16 @@ export default function ToolCall({ toolName, state, input, output }: ToolCallPro
   }
 
   return (
-    <div className="my-2 rounded-lg border border-zinc-700 bg-zinc-900/50 overflow-hidden text-xs">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800">
+    <div className="my-2 rounded-lg border border-zinc-700/40 bg-zinc-800/30 overflow-hidden text-xs">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-700/30">
         <span>{icon}</span>
-        <span className="font-medium text-zinc-300">{label}</span>
+        <span className="font-medium text-zinc-400">{label}</span>
         {isLoading && (
-          <span className="ml-auto text-amber-400 animate-pulse">
+          <span className="ml-auto text-zinc-500 animate-pulse">
             en cours...
           </span>
         )}
-        {isDone && <span className="ml-auto text-emerald-400">terminé</span>}
+        {isDone && <span className="ml-auto text-zinc-600">terminé</span>}
       </div>
 
       {input && Object.keys(input).length > 0 && !isDone && (

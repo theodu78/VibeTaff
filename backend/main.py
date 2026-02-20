@@ -90,17 +90,36 @@ Règles :
 - Sois concis et structuré.
 - Quand tu utilises un outil, explique brièvement pourquoi.
 - Si un outil renvoie une erreur, lis le message d'erreur et corrige ton appel (ne réessaie pas la même chose).
-- Quand l'utilisateur pose une question sur le contenu de ses documents, utilise query_project_memory pour chercher la réponse.
 - Si l'utilisateur exprime une préférence durable (format, unité, habitude), utilise save_to_long_term_memory pour la mémoriser.
+
+Règle FONDAMENTALE sur les documents :
+- Quand l'utilisateur pose une question sur le contenu de ses documents (devis, contrat, rapport, facture, etc.), utilise TOUJOURS query_project_memory EN PREMIER. C'est une recherche sémantique dans la base de données vectorielle, elle trouve les passages pertinents instantanément.
+- Ne fais PAS list_project_files puis read_file_content pour chercher une info. C'est lent et tu gaspilles tes étapes.
+- Utilise read_file_content UNIQUEMENT si query_project_memory n'a pas trouvé de résultat, ou si l'utilisateur demande explicitement de lire un fichier précis.
+- query_project_memory cherche dans TOUS les documents indexés à la fois. C'est ta mémoire principale.
 - Quand l'utilisateur te demande de noter une tâche, un rappel ou un "à faire", utilise manage_todo avec l'action 'add'.
 - Quand l'utilisateur te demande de faire un compte-rendu de réunion, utilise save_meeting_note pour créer un fichier structuré dans le dossier reunions/.
+- Quand tu utilises manage_todo avec l'action 'list', un bloc visuel interactif est automatiquement affiché à l'utilisateur. Ne reproduis PAS la liste en texte, tableau ou récapitulatif. Dis simplement une phrase courte comme "Voici vos tâches." ou réponds directement à la question de l'utilisateur.
+- Après manage_todo avec 'add', 'update' ou 'delete', confirme brièvement l'action en une phrase. Le bloc visuel se met à jour tout seul.
+- Quand l'utilisateur donne des coordonnées (nom, téléphone, email, adresse), utilise manage_contacts avec l'action 'add'. Ne crée PAS de fichier .md ou .json manuellement pour les contacts.
+- Quand l'utilisateur demande "envoie un mail à X", utilise manage_contacts avec l'action 'search' pour trouver l'email du contact, puis utilise draft_email pour rédiger le brouillon.
+- Quand tu utilises manage_contacts avec 'list', un bloc visuel est affiché. Ne reproduis PAS la liste en texte.
+- Pour TOUT email, utilise TOUJOURS l'outil draft_email. Ne rédige JAMAIS un email en texte brut dans ta réponse. L'outil draft_email affiche un composant visuel avec un bouton pour ouvrir le client mail. Ne dis JAMAIS "je ne peux pas envoyer d'email" — draft_email génère un lien mailto qui ouvre le client mail de l'utilisateur.
 
 Règles CRITIQUES sur les outils :
-- Ne fais JAMAIS plus de 2 appels à web_search pour la même question. Si les résultats ne sont pas parfaits, réponds avec ce que tu as trouvé.
-- Ne fais JAMAIS plus de 3 appels à read_file_content par question. Résume ce que tu as lu et réponds.
+- Ne fais JAMAIS plus de 2 appels à web_search pour la même question.
+- Ne fais JAMAIS plus de 3 appels à read_file_content par question.
 - Privilégie TOUJOURS donner une réponse (même partielle) plutôt que de boucler sur des appels d'outils.
 - Si un outil ne donne pas le résultat attendu, n'essaie PAS 5 variantes. Donne ta meilleure réponse avec les infos disponibles.
 - Économise tes étapes : tu as un maximum de 10 actions par message, ne les gaspille pas.
+
+Règles de CONCISION et EFFICACITÉ :
+- Sois DÉCISIF. Ne tourne pas en rond. Si tu hésites entre 2 options, choisis la plus simple et agis.
+- Pour une action simple (déplacer un fichier, créer une note, ajouter une tâche) : 1 à 2 appels d'outils maximum. Ne fais pas list + read + query + list_memories avant d'agir.
+- Si l'utilisateur dit "mets ce fichier là-bas", fais-le directement. Ne lis pas le fichier, ne cherche pas dans la mémoire, ne liste pas 3 fois les dossiers.
+- Si tu ne comprends pas la demande, DEMANDE à l'utilisateur au lieu de deviner en faisant 5 appels d'outils.
+- Tes réponses texte doivent être COURTES : 1-3 phrases maximum pour une action simple. Pas de récapitulatif, pas de "Action effectuée :", pas de liste à puces inutile.
+- Ne répète JAMAIS ce que l'utilisateur vient de dire. Il le sait déjà.
 
 Fichiers joints :
 - Quand le message commence par [Fichier(s) joint(s) : ...], le fichier vient d'être uploadé.
@@ -352,6 +371,14 @@ async def chat(request: Request):
             if reasoning_started and reasoning_id:
                 yield sse_event({"type": "reasoning-end", "id": reasoning_id})
 
+            if not text_content and not tool_calls_accum and reasoning_content:
+                text_id = f"txt_{uuid.uuid4().hex[:40]}"
+                yield sse_event({"type": "text-start", "id": text_id})
+                yield sse_event({"type": "text-delta", "id": text_id, "delta": reasoning_content})
+                text_content = reasoning_content
+                yield sse_event({"type": "text-end", "id": text_id})
+                logger.warning("LLM produced reasoning but no text — reasoning emitted as text fallback")
+
             if text_content and text_id:
                 yield sse_event({"type": "text-end", "id": text_id})
 
@@ -493,6 +520,7 @@ async def chat(request: Request):
                                 "approvalId": approval_id,
                                 "toolCallId": tool_call_id,
                                 "toolName": tool_name,
+                                "args": args,
                                 "status": "approved" if approved else "denied",
                             },
                         })
@@ -508,10 +536,21 @@ async def chat(request: Request):
                             todos_data = _read_todos_file(project_id)
                             yield sse_event({
                                 "type": "data-todos",
-                                "id": f"todos_{uuid.uuid4().hex[:12]}",
+                                "id": "todos_block",
                                 "data": {
                                     "projectId": project_id,
                                     "todos": todos_data,
+                                },
+                            })
+
+                        if tool_name == "manage_contacts":
+                            contacts_data = _read_contacts_file(project_id)
+                            yield sse_event({
+                                "type": "data-contacts",
+                                "id": "contacts_block",
+                                "data": {
+                                    "projectId": project_id,
+                                    "contacts": contacts_data,
                                 },
                             })
                     else:
@@ -641,6 +680,33 @@ async def delete_todo(project_id: str, task_id: int):
     return {"status": "ok"}
 
 
+def _read_contacts_file(project_id: str) -> list[dict]:
+    path = PROJECTS_ROOT / project_id / "contacts.json"
+    if not path.exists():
+        return []
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+@app.get("/api/project/{project_id}/contacts")
+async def get_contacts(project_id: str):
+    return {"contacts": _read_contacts_file(project_id)}
+
+
+@app.delete("/api/project/{project_id}/contacts/{contact_id}")
+async def delete_contact_api(project_id: str, contact_id: int):
+    contacts = _read_contacts_file(project_id)
+    before = len(contacts)
+    contacts = [c for c in contacts if c.get("id") != contact_id]
+    if len(contacts) == before:
+        return {"status": "error", "message": f"Contact #{contact_id} introuvable."}
+    path = PROJECTS_ROOT / project_id / "contacts.json"
+    path.write_text(json.dumps(contacts, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"status": "ok"}
+
+
 @app.post("/api/project/{project_id}/ingest")
 async def ingest(project_id: str, file: UploadFile = File(...)):
     """Upload and ingest a document into the project's vector store."""
@@ -696,6 +762,39 @@ async def delete_document(project_id: str, file_name: str):
         upload_path.unlink()
 
     return {"status": "ok", "message": f"Document '{file_name}' supprimé."}
+
+
+@app.post("/api/project/{project_id}/reindex")
+async def reindex_project_files(project_id: str):
+    """Re-index all .md, .txt, .json files in the project root (not system files)."""
+    project_dir = PROJECTS_ROOT / project_id
+    if not project_dir.exists():
+        return {"status": "error", "message": "Projet introuvable."}
+
+    SKIP = {"_config", "_uploads", "__pycache__", ".git"}
+    SYSTEM_FILES = {"todos.json", "contacts.json", "MEMORY.md"}
+    indexed = []
+
+    for ext in (".md", ".txt", ".json"):
+        for f in project_dir.rglob(f"*{ext}"):
+            if any(part in SKIP for part in f.parts):
+                continue
+            if f.name in SYSTEM_FILES:
+                continue
+            try:
+                delete_file_chunks(project_id, f.name)
+                result = ingest_file(f, project_id)
+                if result.get("status") == "ok":
+                    indexed.append(f.name)
+            except Exception as e:
+                logger.warning(f"Reindex failed for {f.name}: {e}")
+
+    return {
+        "status": "ok",
+        "indexed": indexed,
+        "count": len(indexed),
+        "message": f"{len(indexed)} fichier(s) indexé(s).",
+    }
 
 
 # ─── File access ─────────────────────────────────────────────

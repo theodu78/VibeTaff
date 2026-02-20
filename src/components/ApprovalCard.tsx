@@ -1,14 +1,27 @@
 import { useState, useCallback } from "react";
 
+function summarizeArgs(args?: Record<string, unknown>): string {
+  if (!args) return "";
+  const vals = Object.values(args)
+    .filter((v) => typeof v === "string" && v.length > 0)
+    .map((v) => String(v));
+  if (vals.length === 0) return "";
+  return vals.join(" → ");
+}
+
 const ACTION_DESCRIPTIONS: Record<string, (args?: Record<string, unknown>) => string> = {
   write_project_note: (args) =>
-    `Créer le fichier « ${args?.title || "sans titre"}.md »`,
+    `Créer le fichier « ${args?.title || args?.file_name || "sans titre"}.md »`,
   draft_email: (args) =>
-    `Envoyer un email à ${args?.to || "?"} : « ${args?.subject || "sans objet"} »`,
+    `Rédiger un email à ${args?.to || "?"} : « ${args?.subject || "sans objet"} »`,
   delete_project_file: (args) =>
-    `Supprimer « ${args?.file_name || "?"} »`,
+    `Supprimer « ${args?.file_name || summarizeArgs(args) || "fichier"} »`,
   rename_project_file: (args) =>
-    `Renommer « ${args?.old_name || "?" } » en « ${args?.new_name || "?"} »`,
+    `Déplacer « ${args?.old_name || "?"} » → « ${args?.new_name || "?"} »`,
+  save_meeting_note: (args) =>
+    `Créer le compte-rendu « ${args?.titre || "réunion"} »`,
+  export_to_pdf: (args) =>
+    `Exporter « ${args?.file_name || "fichier"} » en PDF`,
 };
 
 interface ApprovalData {
@@ -49,7 +62,7 @@ export default function ApprovalCard({ data, backendUrl }: ApprovalCardProps) {
   const descFn = ACTION_DESCRIPTIONS[data.toolName];
   const description = descFn
     ? descFn(data.args)
-    : `${data.toolName}`;
+    : `${data.toolName}${data.args ? ` (${summarizeArgs(data.args)})` : ""}`;
 
   if (!isPending) {
     const isApproved = displayStatus === "approved";

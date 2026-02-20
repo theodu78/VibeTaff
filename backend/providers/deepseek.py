@@ -34,6 +34,7 @@ class DeepSeekProvider(ChatProvider):
             "model": model or self.default_model,
             "messages": messages,
             "stream": True,
+            "max_tokens": 8192,
             "extra_body": {"thinking": {"type": "enabled"}},
         }
         if tools:

@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import datetime
 from tools._base import tool, resolve_safe_path
+from tools.files.write_note import _auto_index
 
 
 @tool(
@@ -100,5 +101,6 @@ def save_meeting_note(args: dict, project_id: str, project_dir: Path) -> str:
 
     content = "\n".join(lines)
     target.write_text(content, encoding="utf-8")
+    _auto_index(target, project_id)
 
-    return f"Compte-rendu '{file_name}' créé dans le dossier 'reunions/' ({len(content)} caractères)."
+    return f"Compte-rendu '{file_name}' créé et indexé dans le dossier 'reunions/' ({len(content)} caractères)."

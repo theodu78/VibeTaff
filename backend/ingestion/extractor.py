@@ -10,7 +10,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".xls", ".csv", ".eml", ".msg"}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".xls", ".csv", ".eml", ".msg", ".md", ".txt", ".json"}
 
 
 def extract(file_path: Path) -> tuple[str, dict]:
@@ -35,6 +35,10 @@ def extract(file_path: Path) -> tuple[str, dict]:
         return _extract_csv(file_path, metadata)
     elif ext in (".eml", ".msg"):
         return _extract_email(file_path, metadata)
+    elif ext in (".md", ".txt"):
+        return _extract_text(file_path, metadata)
+    elif ext == ".json":
+        return _extract_json(file_path, metadata)
     else:
         raise ValueError(
             f"Type de fichier '{ext}' non supporté. "
@@ -148,3 +152,34 @@ def _extract_msg(file_path: Path, metadata: dict) -> tuple[str, dict]:
 
     md = f"# Email (.msg)\n\n{content}"
     return md, metadata
+
+
+def _extract_text(file_path: Path, metadata: dict) -> tuple[str, dict]:
+    for encoding in ("utf-8", "latin-1", "cp1252"):
+        try:
+            content = file_path.read_text(encoding=encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        content = file_path.read_text(encoding="utf-8", errors="replace")
+    return content, metadata
+
+
+def _extract_json(file_path: Path, metadata: dict) -> tuple[str, dict]:
+    import json
+    raw = file_path.read_text(encoding="utf-8")
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            md_parts = []
+            for i, item in enumerate(data):
+                if isinstance(item, dict):
+                    lines = [f"- **{k}** : {v}" for k, v in item.items()]
+                    md_parts.append(f"### Entrée {i+1}\n" + "\n".join(lines))
+                else:
+                    md_parts.append(str(item))
+            return "\n\n".join(md_parts), metadata
+        return json.dumps(data, ensure_ascii=False, indent=2), metadata
+    except json.JSONDecodeError:
+        return raw, metadata
