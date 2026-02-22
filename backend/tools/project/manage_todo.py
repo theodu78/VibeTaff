@@ -30,9 +30,12 @@ def _next_id(todos: list[dict]) -> int:
 @tool(
     name="manage_todo",
     description=(
-        "Gère la liste de tâches (to-do) du projet. "
-        "Actions possibles : 'add' (ajouter), 'update' (modifier statut/priorité), "
-        "'delete' (supprimer), 'list' (lister toutes les tâches)."
+        "Gère la liste de tâches (to-do) de l'UTILISATEUR. "
+        "Actions : 'add', 'update', 'delete', 'list'. "
+        "QUAND l'utiliser : quand l'utilisateur dit 'note que je dois...', 'ajoute une tâche', "
+        "'rappelle-moi de...', 'qu'est-ce que j'ai à faire ?'. "
+        "QUAND NE PAS l'utiliser : pour le plan de travail INTERNE de l'agent — utilise agent_plan. "
+        "Après 'list', un bloc visuel s'affiche — ne reproduis PAS la liste en texte."
     ),
     category="project",
     parameters={

@@ -4,7 +4,13 @@ from tools._base import tool, resolve_safe_path, list_dir
 
 @tool(
     name="list_project_files",
-    description="Liste les fichiers et dossiers présents dans le répertoire du projet. Utilise un chemin relatif depuis la racine du projet.",
+    description=(
+        "Liste les fichiers et dossiers d'un répertoire du projet. "
+        "QUAND l'utiliser : pour découvrir la structure du projet, vérifier qu'un fichier existe, "
+        "ou quand l'utilisateur demande 'montre-moi mes fichiers'. "
+        "QUAND NE PAS l'utiliser : pour chercher une info dans les documents — utilise "
+        "query_project_memory à la place, c'est instantané et plus pertinent."
+    ),
     category="files",
     parameters={
         "type": "object",

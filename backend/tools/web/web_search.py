@@ -5,7 +5,14 @@ from tools._base import tool
 
 @tool(
     name="web_search",
-    description="Recherche sur le web via Tavily. Renvoie un résumé et les sources. Utilise cet outil quand l'utilisateur a besoin d'informations en temps réel (cours de bourse, taux de change, actualités, etc.).",
+    description=(
+        "Recherche sur le web. Renvoie un résumé structuré et les sources. "
+        "QUAND l'utiliser : pour des infos en temps réel (cours, taux de change, actualités, "
+        "lois récentes, prix du marché). "
+        "QUAND NE PAS l'utiliser : pour des infos qui sont déjà dans les documents du projet — "
+        "utilise query_project_memory. "
+        "LIMITE : max 2 recherches par message. Formule des requêtes précises et spécifiques."
+    ),
     category="web",
     requires_env=["TAVILY_API_KEY"],
     parameters={

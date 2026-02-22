@@ -4,7 +4,13 @@ from tools._base import tool
 
 @tool(
     name="list_memories",
-    description="Liste toutes les mémoires enregistrées pour ce projet (préférences utilisateur, infos mémorisées). Utilise cet outil pour vérifier ce qui est déjà mémorisé avant d'ajouter un doublon.",
+    description=(
+        "Liste toutes les mémoires persistantes du projet (préférences, infos mémorisées). "
+        "QUAND l'utiliser : pour vérifier ce qui est déjà mémorisé avant d'ajouter un doublon, "
+        "ou quand l'utilisateur demande 'qu'est-ce que tu sais de moi ?'. "
+        "QUAND NE PAS l'utiliser : les mémoires sont déjà injectées dans ton contexte à chaque message, "
+        "tu n'as PAS besoin de les relire sauf si l'utilisateur le demande explicitement."
+    ),
     category="memory",
     parameters={
         "type": "object",

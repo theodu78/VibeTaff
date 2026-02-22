@@ -40,8 +40,11 @@ def _match(contact: dict, query: str) -> bool:
     name="manage_contacts",
     description=(
         "Gère le carnet de contacts du projet. "
-        "Actions : 'add' (ajouter), 'search' (chercher par nom/email/entreprise), "
-        "'update' (modifier), 'delete' (supprimer), 'list' (tout lister)."
+        "Actions : 'add', 'search', 'update', 'delete', 'list'. "
+        "QUAND l'utiliser : quand l'utilisateur donne des coordonnées, demande de trouver un contact, "
+        "ou avant d'envoyer un email (pour trouver l'adresse). "
+        "QUAND NE PAS l'utiliser : ne crée PAS de fichier .md ou .json pour les contacts. "
+        "Après 'list', un bloc visuel s'affiche — ne reproduis PAS la liste en texte."
     ),
     category="project",
     parameters={

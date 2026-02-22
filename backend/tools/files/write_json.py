@@ -9,7 +9,13 @@ logger = logging.getLogger(__name__)
 
 @tool(
     name="write_json_table",
-    description="Crée un fichier JSON contenant un tableau de données structuré. Utilisé pour sauvegarder des tableaux, listes et données tabulaires.",
+    description=(
+        "Crée un fichier JSON contenant un tableau de données structuré. "
+        "QUAND l'utiliser : pour sauvegarder des tableaux comparatifs, listes de prix, "
+        "données extraites de documents — tout ce qui est tabulaire. "
+        "QUAND NE PAS l'utiliser : pour du texte narratif (utilise write_project_note), "
+        "pour des contacts (utilise manage_contacts)."
+    ),
     category="files",
     parameters={
         "type": "object",

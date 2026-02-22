@@ -31,34 +31,52 @@ def _sync_memory_md(project_id: str):
 
 @tool(
     name="save_to_long_term_memory",
-    description="Sauvegarde une préférence ou une information importante de l'utilisateur pour s'en souvenir entre les sessions. Exemples : 'l'utilisateur préfère les montants en k€', 'le client principal est Omega Corp'.",
+    description=(
+        "Sauvegarde ou supprime une mémoire persistante (préférence, info importante). "
+        "QUAND l'utiliser : quand l'utilisateur exprime une préférence durable, donne une info à retenir, "
+        "ou quand il CONTREDIT une mémoire existante (utilise action 'delete'). "
+        "QUAND NE PAS l'utiliser : pour des infos ponctuelles qui ne servent qu'à la conversation en cours. "
+        "Exemples : 'montants toujours en k€', 'le client principal est Omega Corp'."
+    ),
     category="memory",
     parameters={
         "type": "object",
         "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["save", "delete"],
+                "description": "Action : 'save' pour créer/mettre à jour, 'delete' pour supprimer une mémoire obsolète ou contredite.",
+            },
             "key": {
                 "type": "string",
                 "description": "Identifiant court de la mémoire (ex: 'format_montants', 'client_principal').",
             },
             "value": {
                 "type": "string",
-                "description": "Le contenu à mémoriser.",
+                "description": "Le contenu à mémoriser (requis pour 'save', ignoré pour 'delete').",
             },
         },
-        "required": ["key", "value"],
+        "required": ["action", "key"],
     },
 )
 def save_to_long_term_memory(args: dict, project_id: str, project_dir: Path) -> str:
-    from database import save_memory
+    from database import save_memory, delete_memory
 
+    action = args.get("action", "save")
     key = args.get("key", "").strip()
-    value = args.get("value", "").strip()
 
     if not key:
         return "Erreur : La clé de mémoire est vide."
+
+    if action == "delete":
+        delete_memory(project_id, key)
+        _sync_memory_md(project_id)
+        return f"Mémoire '{key}' supprimée."
+
+    value = args.get("value", "").strip()
     if not value:
         return "Erreur : La valeur à mémoriser est vide."
 
     save_memory(project_id, key, value)
     _sync_memory_md(project_id)
-    return f"Mémorisé : '{key}' = '{value}'. Je m'en souviendrai lors des prochaines sessions."
+    return f"Mémorisé : '{key}' = '{value}'."

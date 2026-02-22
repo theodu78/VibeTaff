@@ -13,12 +13,6 @@ const PRIORITY_LABELS: Record<string, { label: string; color: string }> = {
   basse: { label: "Basse", color: "text-emerald-400" },
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  a_faire: "À faire",
-  en_cours: "En cours",
-  fait: "Fait",
-  annule: "Annulé",
-};
 
 export default function TodoViewer({
   backendUrl,

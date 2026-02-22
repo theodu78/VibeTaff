@@ -4,7 +4,11 @@ from tools._base import tool, resolve_safe_path
 
 @tool(
     name="rename_project_file",
-    description="Renomme ou déplace un fichier dans le projet.",
+    description=(
+        "Renomme ou déplace un fichier dans le projet. "
+        "QUAND l'utiliser : quand l'utilisateur demande de renommer, déplacer ou réorganiser un fichier. "
+        "Supporte les sous-dossiers (les dossiers seront créés automatiquement)."
+    ),
     category="files",
     requires_approval=True,
     parameters={

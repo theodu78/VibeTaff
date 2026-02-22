@@ -14,7 +14,15 @@ def _extract_rich(file_path: Path) -> str:
 
 @tool(
     name="read_file_content",
-    description="Lit le contenu d'un fichier du projet (texte, PDF, Word, Excel, CSV, email). Renvoie le texte extrait.",
+    description=(
+        "Lit le contenu d'un fichier du projet (texte, PDF, Word, Excel, CSV, email). "
+        "QUAND l'utiliser : quand l'utilisateur demande de lire un fichier SPÉCIFIQUE, "
+        "ou quand query_project_memory n'a pas trouvé de résultat pertinent. "
+        "QUAND NE PAS l'utiliser : pour chercher une info dans les documents — "
+        "query_project_memory est plus rapide et cherche dans TOUS les fichiers à la fois. "
+        "LIMITE : max 3 lectures par message. Pour les gros fichiers (>50k chars), "
+        "le contenu sera tronqué."
+    ),
     category="files",
     parameters={
         "type": "object",

@@ -7,8 +7,11 @@ from tools.files.write_note import _auto_index
 @tool(
     name="save_meeting_note",
     description=(
-        "Crée un compte-rendu de réunion structuré en Markdown dans le dossier 'reunions/' du projet. "
-        "Génère automatiquement un nom de fichier avec la date du jour."
+        "Crée un compte-rendu de réunion structuré (Markdown) dans 'reunions/'. "
+        "QUAND l'utiliser : quand l'utilisateur dit 'fais un CR de réunion', 'note les points de la réunion'. "
+        "QUAND NE PAS l'utiliser : pour une note simple (utilise write_project_note), "
+        "pour une tâche (utilise manage_todo). "
+        "Génère automatiquement un nom de fichier avec la date."
     ),
     category="project",
     requires_approval=True,

@@ -10,6 +10,8 @@ import TodoBlock from "./TodoBlock";
 import TodoViewer from "./TodoViewer";
 import ContactBlock from "./ContactBlock";
 import ContactViewer from "./ContactViewer";
+import AgentPlanBlock from "./AgentPlanBlock";
+import StepIndicator from "./StepIndicator";
 
 interface PendingFileStatus {
   name: string;
@@ -24,6 +26,8 @@ interface ChatProps {
   pendingFiles?: string[];
   pendingFileStatuses?: PendingFileStatus[];
   onClearPendingFiles?: () => void;
+  externalFilePath?: string | null;
+  onClearExternalFile?: () => void;
 }
 
 export default function Chat({
@@ -34,10 +38,19 @@ export default function Chat({
   pendingFiles = [],
   pendingFileStatuses = [],
   onClearPendingFiles,
+  externalFilePath,
+  onClearExternalFile,
 }: ChatProps) {
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewerPath, setViewerPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (externalFilePath) {
+      setViewerPath(externalFilePath);
+      onClearExternalFile?.();
+    }
+  }, [externalFilePath, onClearExternalFile]);
   const [todoViewerOpen, setTodoViewerOpen] = useState(false);
   const [contactViewerOpen, setContactViewerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -225,22 +238,43 @@ export default function Chat({
               const lastIdx: Record<string, number> = {};
               parts.forEach((p, i) => {
                 const pt = p as Record<string, unknown>;
-                if (typeof pt.type === "string" && (pt.type === "data-todos" || pt.type === "data-contacts")) {
+                if (typeof pt.type === "string" && (pt.type === "data-todos" || pt.type === "data-contacts" || pt.type === "data-agent-plan")) {
                   lastIdx[pt.type as string] = i;
                 }
               });
               return parts.filter((p, i) => {
                 const pt = p as Record<string, unknown>;
-                if (typeof pt.type === "string" && (pt.type === "data-todos" || pt.type === "data-contacts")) {
+                if (typeof pt.type === "string" && (pt.type === "data-todos" || pt.type === "data-contacts" || pt.type === "data-agent-plan")) {
                   return i === lastIdx[pt.type as string];
                 }
                 return true;
               });
             })();
 
+            const hasPlan = dedupedParts.some((p) => {
+              const pt = p as Record<string, unknown>;
+              return typeof pt.type === "string" && pt.type === "data-agent-plan";
+            });
+
+            const progressData = (() => {
+              let latest: { step: number; maxSteps: number; label?: string } | null = null;
+              for (const p of message.parts) {
+                const pt = p as Record<string, unknown>;
+                if (pt.type === "data-progress" && pt.data && typeof pt.data === "object") {
+                  const d = pt.data as { step?: number; maxSteps?: number; label?: string };
+                  if (typeof d.step === "number" && typeof d.maxSteps === "number") {
+                    latest = { step: d.step, maxSteps: d.maxSteps, label: d.label };
+                  }
+                }
+              }
+              return latest;
+            })();
+
             return (
               <div key={message.id} className="group relative">
-                {(allReasoningText || thinkingIsStreaming) && (
+                {/* StepIndicator masqué pour le moment */}
+
+                {!hasPlan && (allReasoningText || thinkingIsStreaming) && (
                   <ThinkingBlock
                     text={allReasoningText}
                     isStreaming={thinkingIsStreaming}
@@ -345,13 +379,51 @@ export default function Chat({
                             );
                           }
                         }
+                        if (p.type === "data-agent-plan") {
+                          const d = p.data as {
+                            todos: {
+                              id: string;
+                              content: string;
+                              status: "pending" | "in_progress" | "completed";
+                            }[];
+                          };
+                          if (d.todos && d.todos.length > 0) {
+                            return (
+                              <div key={`${message.id}-plan-${i}`}>
+                                <AgentPlanBlock todos={d.todos} />
+                                {(allReasoningText || thinkingIsStreaming) && (
+                                  <ThinkingBlock
+                                    text={allReasoningText}
+                                    isStreaming={thinkingIsStreaming}
+                                  />
+                                )}
+                              </div>
+                            );
+                          }
+                        }
                       }
                       return null;
                     }
                   }
                 })}
 
-                <div className="absolute -bottom-4 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute -bottom-4 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
+                  {(() => {
+                    for (const p of message.parts) {
+                      const pt = p as Record<string, unknown>;
+                      if (pt.type === "data-usage" && pt.data && typeof pt.data === "object") {
+                        const d = pt.data as { total_tokens?: number };
+                        if (d.total_tokens) {
+                          return (
+                            <span className="text-[10px] text-zinc-700" title="Tokens utilisés">
+                              {d.total_tokens.toLocaleString()} tokens
+                            </span>
+                          );
+                        }
+                      }
+                    }
+                    return null;
+                  })()}
                   <button
                     onClick={() =>
                       handleCopy(message.id, getMessageText(message.parts))

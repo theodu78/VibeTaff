@@ -5,8 +5,9 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { Components } from "react-markdown";
 
-const FILE_EXT_RE = /\.(md|txt|json|csv|pdf|doc|docx|xls|xlsx|eml)$/i;
+const FILE_EXT_RE = /\.(md|txt|json|csv|pdf|doc|docx|xls|xlsx|eml|msg|html|xml|yaml|yml)$/i;
 const PATH_LIKE_RE = /^[a-zA-Z0-9_\-\.\/]+$/;
+const INLINE_FILE_RE = /(?:^|\s)([\w\-./]+\.(?:md|txt|json|csv|pdf|doc|docx|xls|xlsx|eml|msg))(?=[\s,.:;!?)}\]]|$)/gi;
 
 export const FileOpenContext = createContext<
   ((path: string) => void) | null
@@ -86,9 +87,54 @@ const components: Components = {
       </td>
     );
   },
+  p({ children, ...props }) {
+    return (
+      <p {...props}>
+        <ClickableFileText>{children}</ClickableFileText>
+      </p>
+    );
+  },
 };
 
-function InlineCode({ children, ...props }: Record<string, unknown>) {
+function ClickableFileText({ children }: { children?: React.ReactNode }) {
+  const onFileOpen = useContext(FileOpenContext);
+  if (!onFileOpen) return <>{children}</>;
+
+  const processNode = (node: React.ReactNode): React.ReactNode => {
+    if (typeof node !== "string") return node;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    INLINE_FILE_RE.lastIndex = 0;
+    let match;
+    while ((match = INLINE_FILE_RE.exec(node)) !== null) {
+      const fullMatch = match[0];
+      const fileName = match[1];
+      const matchStart = match.index + (fullMatch.length - fileName.length);
+      if (matchStart > lastIndex) {
+        parts.push(node.slice(lastIndex, matchStart));
+      }
+      parts.push(
+        <button
+          key={`file-${matchStart}`}
+          onClick={() => onFileOpen(fileName)}
+          className="text-zinc-300 hover:text-white underline underline-offset-2 decoration-zinc-600 hover:decoration-zinc-400 cursor-pointer transition-colors"
+          title={`Ouvrir ${fileName}`}
+        >
+          {fileName}
+        </button>
+      );
+      lastIndex = matchStart + fileName.length;
+    }
+    if (lastIndex === 0) return node;
+    if (lastIndex < node.length) parts.push(node.slice(lastIndex));
+    return <>{parts}</>;
+  };
+
+  if (!Array.isArray(children)) return <>{processNode(children as React.ReactNode)}</>;
+  return <>{(children as React.ReactNode[]).map((c, i) => <span key={i}>{processNode(c)}</span>)}</>;
+}
+
+function InlineCode({ children, ...props }: Record<string, unknown> & { children?: React.ReactNode }) {
   const onFileOpen = useContext(FileOpenContext);
   const text = String(children);
 

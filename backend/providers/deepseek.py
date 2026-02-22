@@ -1,6 +1,6 @@
 import os
 from typing import AsyncIterator
-from providers._base import ChatProvider, CompletionChunk, ToolCallDelta
+from providers._base import ChatProvider, CompletionChunk, ToolCallDelta, UsageData
 
 
 class DeepSeekProvider(ChatProvider):
@@ -45,6 +45,13 @@ class DeepSeekProvider(ChatProvider):
         async for chunk in response:
             choice = chunk.choices[0] if chunk.choices else None
             if not choice:
+                if hasattr(chunk, "usage") and chunk.usage:
+                    yield CompletionChunk(
+                        usage=UsageData(
+                            prompt_tokens=getattr(chunk.usage, "prompt_tokens", 0) or 0,
+                            completion_tokens=getattr(chunk.usage, "completion_tokens", 0) or 0,
+                        )
+                    )
                 continue
 
             delta = choice.delta

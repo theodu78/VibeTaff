@@ -6,7 +6,13 @@ from tools._base import tool, resolve_safe_path
 
 @tool(
     name="open_file_on_desktop",
-    description="Ouvre un fichier avec l'application par défaut du système (Aperçu pour les PDF, Excel pour les .xlsx, etc.). Utile quand l'utilisateur veut voir ou consulter un document.",
+    description=(
+        "Ouvre un fichier avec l'application par défaut du système (Aperçu pour PDF, Excel pour .xlsx). "
+        "QUAND l'utiliser : quand l'utilisateur dit 'ouvre le fichier', 'montre-moi le PDF', "
+        "'affiche le document'. "
+        "QUAND NE PAS l'utiliser : pour lire le CONTENU d'un fichier dans le chat — "
+        "utilise read_file_content à la place."
+    ),
     category="files",
     parameters={
         "type": "object",

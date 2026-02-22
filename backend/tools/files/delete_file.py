@@ -5,7 +5,11 @@ from tools._base import tool, resolve_safe_path
 
 @tool(
     name="delete_project_file",
-    description="Supprime un fichier du projet. Action irréversible, nécessite confirmation de l'utilisateur.",
+    description=(
+        "Supprime un fichier ou dossier du projet. Action irréversible, nécessite confirmation. "
+        "QUAND l'utiliser : quand l'utilisateur demande explicitement de supprimer un fichier. "
+        "QUAND NE PAS l'utiliser : ne JAMAIS supprimer spontanément — toujours sur demande explicite."
+    ),
     category="files",
     requires_approval=True,
     parameters={

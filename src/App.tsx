@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Chat from "./components/Chat";
 import Settings from "./components/Settings";
+import CommandPalette from "./components/CommandPalette";
+import ConversationSidebar from "./components/ConversationSidebar";
 
 const BACKEND_URL = "http://localhost:11434";
 const PROJECT_ID = "default";
@@ -9,11 +11,14 @@ function App() {
   const [backendStatus, setBackendStatus] = useState<
     "connecting" | "connected" | "error"
   >("connecting");
-  const [deepseekConfigured, setDeepseekConfigured] = useState(false);
+  const [llmConfigured, setLlmConfigured] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<{ name: string; status: "indexing" | "ready" | "error" }[]>([]);
+  const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openFilePath, setOpenFilePath] = useState<string | null>(null);
 
   useEffect(() => {
     const checkBackend = async () => {
@@ -22,7 +27,7 @@ function App() {
         if (res.ok) {
           const data = await res.json();
           setBackendStatus("connected");
-          setDeepseekConfigured(data.deepseek_configured);
+          setLlmConfigured(data.deepseek_configured || data.llm_configured);
         } else {
           setBackendStatus("error");
         }
@@ -34,6 +39,17 @@ function App() {
     checkBackend();
     const interval = setInterval(checkBackend, 10000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "p") {
+        e.preventDefault();
+        setCmdPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const startNewConversation = useCallback(async () => {
@@ -50,10 +66,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (backendStatus === "connected" && deepseekConfigured && !conversationId) {
+    if (backendStatus === "connected" && llmConfigured && !conversationId) {
       startNewConversation();
     }
-  }, [backendStatus, deepseekConfigured, conversationId, startNewConversation]);
+  }, [backendStatus, llmConfigured, conversationId, startNewConversation]);
 
   const handleNewChat = useCallback(() => {
     setConversationId(null);
@@ -121,14 +137,14 @@ function App() {
     );
   }
 
-  if (!deepseekConfigured || showSettings) {
+  if (!llmConfigured || showSettings) {
     return (
       <Settings
         onDone={() => {
           setShowSettings(false);
-          setDeepseekConfigured(true);
+          setLlmConfigured(true);
         }}
-        isFirstTime={!deepseekConfigured}
+        isFirstTime={!llmConfigured}
       />
     );
   }
@@ -149,16 +165,39 @@ function App() {
     >
       <header className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm">
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-zinc-500 hover:text-zinc-300 transition-colors p-1 rounded hover:bg-zinc-800/50"
+            title="Historique"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <h1 className="text-sm font-semibold text-zinc-100">Vibetaff</h1>
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setCmdPaletteOpen(true)}
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1 rounded hover:bg-zinc-800/50"
+            title="Rechercher un fichier (⌘P)"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span className="hidden sm:inline">Rechercher</span>
+            <kbd className="text-[10px] text-zinc-600 bg-zinc-800 px-1 rounded font-mono ml-1">⌘P</kbd>
+          </button>
+          <button
             onClick={handleNewChat}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1"
             title="Nouvelle conversation"
           >
-            + Nouveau
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nouveau
           </button>
           <button
             onClick={() => setShowSettings(true)}
@@ -168,6 +207,19 @@ function App() {
           </button>
         </div>
       </header>
+
+      <ConversationSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        backendUrl={BACKEND_URL}
+        projectId={PROJECT_ID}
+        currentConversationId={conversationId}
+        onSelectConversation={(id) => setConversationId(id)}
+        onNewChat={handleNewChat}
+        onDeleteConversation={(id) => {
+          if (id === conversationId) handleNewChat();
+        }}
+      />
 
       {conversationId && (
         <Chat
@@ -179,8 +231,20 @@ function App() {
           pendingFiles={pendingFiles.map(f => f.name)}
           pendingFileStatuses={pendingFiles}
           onClearPendingFiles={() => setPendingFiles([])}
+          externalFilePath={openFilePath}
+          onClearExternalFile={() => setOpenFilePath(null)}
         />
       )}
+
+      <CommandPalette
+        open={cmdPaletteOpen}
+        onClose={() => setCmdPaletteOpen(false)}
+        backendUrl={BACKEND_URL}
+        projectId={PROJECT_ID}
+        onOpenFile={(path) => setOpenFilePath(path)}
+        onNewChat={handleNewChat}
+        onOpenSettings={() => setShowSettings(true)}
+      />
 
       {isDragOver && (
         <div className="absolute inset-0 z-50 bg-zinc-500/5 backdrop-blur-sm border-2 border-dashed border-zinc-600 flex items-center justify-center pointer-events-none">

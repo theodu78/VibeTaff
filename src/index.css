@@ -32,3 +32,110 @@ body {
 *::-webkit-scrollbar-thumb:hover {
   background-color: rgba(113, 113, 122, 0.5);
 }
+
+/* cmdk Dialog */
+[cmdk-dialog] {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+[cmdk-overlay] {
+  position: fixed;
+  inset: 0;
+}
+[cmdk-group-heading] {
+  font-size: 11px;
+  font-weight: 500;
+  color: #71717a;
+  padding: 6px 12px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+[cmdk-group][hidden] {
+  display: none;
+}
+
+/* FileViewer visible scrollbar */
+.fileviewer-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.45) rgba(39, 39, 42, 0.3);
+}
+.fileviewer-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.fileviewer-scroll::-webkit-scrollbar-track {
+  background: rgba(39, 39, 42, 0.3);
+  border-radius: 4px;
+}
+.fileviewer-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(161, 161, 170, 0.45);
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+.fileviewer-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(161, 161, 170, 0.65);
+}
+
+/* TipTap Editor */
+.tiptap {
+  outline: none;
+}
+.tiptap h1 { font-size: 1.5em; font-weight: 700; margin: 0.5em 0 0.3em; color: #e4e4e7; }
+.tiptap h2 { font-size: 1.25em; font-weight: 600; margin: 0.5em 0 0.3em; color: #e4e4e7; }
+.tiptap h3 { font-size: 1.1em; font-weight: 600; margin: 0.4em 0 0.2em; color: #d4d4d8; }
+.tiptap p { margin: 0.3em 0; color: #a1a1aa; line-height: 1.6; }
+.tiptap ul, .tiptap ol { padding-left: 1.5em; margin: 0.3em 0; color: #a1a1aa; }
+.tiptap li { margin: 0.15em 0; }
+.tiptap blockquote {
+  border-left: 3px solid #3f3f46;
+  padding-left: 1em;
+  margin: 0.5em 0;
+  color: #71717a;
+  font-style: italic;
+}
+.tiptap hr {
+  border: none;
+  border-top: 1px solid #3f3f46;
+  margin: 1em 0;
+}
+.tiptap code {
+  background: rgba(63, 63, 70, 0.5);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.85em;
+  color: #d4d4d8;
+}
+.tiptap strong { color: #e4e4e7; }
+.tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+.tiptap th, .tiptap td {
+  border: 1px solid #3f3f46;
+  padding: 0.4em 0.6em;
+  text-align: left;
+  font-size: 0.85em;
+  color: #a1a1aa;
+}
+.tiptap th {
+  background: rgba(63, 63, 70, 0.3);
+  font-weight: 600;
+  color: #d4d4d8;
+}
+.tiptap .selectedCell {
+  background: rgba(63, 63, 70, 0.5);
+}
+.tiptap .column-resize-handle {
+  background-color: #71717a;
+  width: 2px;
+  cursor: col-resize;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+}

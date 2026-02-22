@@ -4,7 +4,16 @@ from tools._base import tool
 
 @tool(
     name="query_project_memory",
-    description="Recherche dans les documents indexés du projet (PDF, Excel, emails déposés par l'utilisateur). Renvoie les passages les plus pertinents. Utilise cet outil quand l'utilisateur pose une question sur le contenu de ses documents.",
+    description=(
+        "Recherche sémantique dans tous les documents indexés du projet (PDF, Excel, emails). "
+        "C'est l'outil PRINCIPAL pour trouver une information dans les documents. "
+        "QUAND l'utiliser : en PREMIER quand l'utilisateur pose une question sur ses documents. "
+        "QUAND NE PAS l'utiliser : pour lister les fichiers (utilise list_project_files), "
+        "pour lire un fichier spécifique déjà connu (utilise read_file_content). "
+        "STRATÉGIE : pose des questions en langage naturel. Pour analyser PLUSIEURS documents, "
+        "fais 2-3 requêtes thématiques ('finances', 'contacts', 'technique') plutôt que de "
+        "lire chaque fichier individuellement."
+    ),
     category="memory",
     requires_docs=True,
     parameters={

@@ -4,7 +4,13 @@ from tools._base import tool
 
 @tool(
     name="update_project_instructions",
-    description="Met à jour les instructions permanentes du projet. Ces instructions seront appliquées automatiquement à chaque message. Utilise cet outil quand l'utilisateur donne une consigne générale qui doit s'appliquer à tout le projet (ex: 'les montants doivent toujours être en k€', 'le client s'appelle Omega Corp').",
+    description=(
+        "Met à jour les instructions permanentes du projet (appliquées à chaque message). "
+        "QUAND l'utiliser : quand l'utilisateur donne une consigne générale pour le projet entier "
+        "(ex: 'les montants en k€', 'le client s'appelle Omega'). "
+        "QUAND NE PAS l'utiliser : pour une préférence personnelle durable — utilise save_to_long_term_memory. "
+        "ATTENTION : le contenu REMPLACE les instructions existantes — inclure les anciennes + les nouvelles."
+    ),
     category="project",
     parameters={
         "type": "object",

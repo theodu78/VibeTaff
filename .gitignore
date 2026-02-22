@@ -7,3 +7,4 @@ backend/.env
 __pycache__/
 .DS_Store
 src-tauri/binaries/vibetaff-backend-*
+backend/build/

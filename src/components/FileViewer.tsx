@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Markdown from "./Markdown";
+import DocumentEditor from "./DocumentEditor";
 
 interface FileViewerProps {
   backendUrl: string;
@@ -42,6 +43,8 @@ export default function FileViewer({
   const [data, setData] = useState<FileData | DirData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const fetchFile = useCallback(async () => {
     setLoading(true);
@@ -67,6 +70,10 @@ export default function FileViewer({
   }, [fetchFile]);
 
   useEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+  }, [data, editing]);
+
+  useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -80,7 +87,7 @@ export default function FileViewer({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-3xl max-h-[85vh] mx-4 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-3xl h-[85vh] mx-4 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-zinc-800">
           <div className="flex items-center gap-2 min-w-0">
@@ -105,6 +112,34 @@ export default function FileViewer({
             </span>
           </div>
           <div className="flex items-center gap-1 ml-auto shrink-0">
+            {data?.type === "file" && data.extension === ".md" && (
+              <button
+                onClick={() => setEditing((e) => !e)}
+                className={`transition-colors px-2 py-1 rounded text-xs font-medium flex items-center gap-1 ${
+                  editing
+                    ? "text-zinc-200 bg-zinc-700"
+                    : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+                }`}
+                title={editing ? "Mode lecture" : "Mode édition"}
+              >
+                {editing ? (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Lecture
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Éditer
+                  </>
+                )}
+              </button>
+            )}
             {data?.type === "file" && data.abs_path && [".pdf", ".docx", ".xlsx", ".xls"].includes(data.extension) && (
               <button
                 onClick={async () => {
@@ -154,7 +189,10 @@ export default function FileViewer({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div
+          ref={contentRef}
+          className="flex-1 min-h-0 overflow-y-auto p-4 fileviewer-scroll"
+        >
           {loading && (
             <div className="flex items-center gap-2 text-zinc-500 text-sm">
               <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-pulse" />
@@ -203,7 +241,7 @@ export default function FileViewer({
             </div>
           )}
 
-          {data?.type === "file" && (
+          {data?.type === "file" && !editing && (
             <>
               {data.extension === ".md" ? (
                 <Markdown>{data.content}</Markdown>
@@ -217,6 +255,24 @@ export default function FileViewer({
                 </pre>
               )}
             </>
+          )}
+
+          {editing && data?.type === "file" && data.extension === ".md" && (
+            <DocumentEditor
+              content={data.content}
+              fileName={data.name}
+              onSave={async (md) => {
+                await fetch(
+                  `${backendUrl}/api/project/${projectId}/file/${encodeURIComponent(filePath)}`,
+                  {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ content: md }),
+                  }
+                );
+                setData({ ...data, content: md });
+              }}
+            />
           )}
         </div>
       </div>

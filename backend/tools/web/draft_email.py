@@ -6,7 +6,13 @@ from tools._base import tool
 
 @tool(
     name="draft_email",
-    description="Prépare un brouillon d'email. N'envoie rien : le brouillon est affiché dans le chat pour validation par l'utilisateur, qui pourra l'envoyer via son client mail.",
+    description=(
+        "Prépare un brouillon d'email affiché dans un composant interactif. "
+        "N'envoie rien — l'utilisateur valide et envoie via son client mail. "
+        "QUAND l'utiliser : TOUJOURS quand l'utilisateur demande d'envoyer ou rédiger un email. "
+        "Ne rédige JAMAIS un email en texte brut dans ta réponse. "
+        "ASTUCE : si tu ne connais pas l'adresse du destinataire, cherche d'abord dans les contacts."
+    ),
     category="web",
     requires_approval=False,
     parameters={

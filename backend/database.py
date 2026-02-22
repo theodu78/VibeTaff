@@ -159,7 +159,7 @@ def save_memory(project_id: str, key: str, value: str):
 def get_all_memories(project_id: str) -> list[dict]:
     conn = _get_conn()
     rows = conn.execute(
-        "SELECT key, value, created_at FROM memory WHERE project_id = ? ORDER BY created_at",
+        "SELECT id, key, value, created_at FROM memory WHERE project_id = ? ORDER BY created_at",
         (project_id,),
     ).fetchall()
     return [dict(r) for r in rows]
